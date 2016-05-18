@@ -1,10 +1,17 @@
 package com.jinhong.coolweather.activity;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
@@ -62,6 +69,8 @@ public class WeatherActivity extends Activity implements View.OnClickListener {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.weather_layout);
         init();
+
+
     }
     private void init(){
         weatherInfoLayout = (LinearLayout)findViewById(R.id.weather_info_layout);
@@ -146,14 +155,43 @@ public class WeatherActivity extends Activity implements View.OnClickListener {
      */
     private void showWeather(){
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        cityNameText.setText(prefs.getString("city_name",""));
-        temp1Text.setText(prefs.getString("temp1",""));
-        temp2Text.setText(prefs.getString("temp2",""));
-        weatherDespText.setText(prefs.getString("weather_desp",""));
-        publishText.setText(prefs.getString("publish_time","")+"发布");
-        currentDateText.setText(prefs.getString("current_date", ""));
+        String cityName = prefs.getString("city_name", "");
+        String minTemp = prefs.getString("temp2", "");
+        String maxTemp = prefs.getString("temp1","");
+        String weatherDesp = prefs.getString("weather_desp","");
+        String publishTime = prefs.getString("publish_time","");
+        String currentDate = prefs.getString("current_date", "");
+        cityNameText.setText(cityName);
+        temp1Text.setText(minTemp);
+        temp2Text.setText(maxTemp);
+        weatherDespText.setText(weatherDesp);
+        publishText.setText(publishTime+"发布");
+        currentDateText.setText(currentDate);
         weatherInfoLayout.setVisibility(View.VISIBLE);
         cityNameText.setVisibility(View.VISIBLE);
+
+        //应该在后台Service运行，但为了看到效果把它放在这里。
+        //LargeIcon必须是Bitmap
+        Bitmap btm = BitmapFactory.decodeResource(getResources(),R.drawable.logo);
+        Intent openintent = new Intent(this, WeatherActivity.class);
+        //当点击消息时就会向系统发送openintent意图
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, openintent, 0);
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(WeatherActivity.this).setSmallIcon(R.drawable.logo)
+                .setContentTitle("jinhom's weather")
+                .setContentText(cityName + "天气实况" + "\n" + minTemp + "~" + maxTemp + weatherDesp).setTicker("weather news") //第一次提示消息显示在通知栏
+                .setWhen(System.currentTimeMillis())
+                .setContentIntent(contentIntent);
+                //.setLargeIcon(btm).setAutoCancel(true); //自己维护通知的消息
+        Notification notification = mBuilder.build();
+        notification.defaults = Notification.DEFAULT_SOUND;//发出默认声音
+        //notification.flags = Notification.FLAG_AUTO_CANCEL;//点击通知后自动清除通知
+        //获取通知管理器
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.notify(0, notification);//第一个参数为自定义的通知唯一标识
+
+        // 第一个参数为图标,第二个参数为短暂提示标题,第三个为通知时间，这个方法已经过时了。
+        //Notification notification = new Notification(R.drawable.logo, "jinhom weather comes", when);
+
         //启动后台的自动更新天气服务
         Intent intent = new Intent(this,AutoUpdateService.class);
         startService(intent);
